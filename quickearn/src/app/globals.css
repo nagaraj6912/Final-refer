@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Ensure mobile-first responsive text */
+body {
+  @apply text-base text-gray-700 bg-base-100;
+}
+
+h1 {
+  @apply text-3xl font-bold md:text-5xl;
+}
+
+h2 {
+  @apply text-2xl font-bold md:text-3xl;
+}
+
+/* Ensure CTAs are touch-friendly */
+.btn {
+  @apply min-h-[44px] h-[44px];
+}
