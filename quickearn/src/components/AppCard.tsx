@@ -2,129 +2,165 @@
 
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { App } from '@/types'; // Import our new type
-import Cookies from 'js-cookie'; // Import the cookie library
+import { createSupabaseBrowserClient } from '@/lib/supabaseClient'; // Corrected import
+import { App } from '@/types';
+import Cookies from 'js-cookie'; // <-- ADDED: Import the cookie library
+import { useEffect, useState } from 'react'; // Added for image error handling
 
 interface AppCardProps {
   app: App;
 }
 
 export default function AppCard({ app }: AppCardProps) {
-  const supabase = createClientComponentClient();
+  const supabase = createSupabaseBrowserClient(); // Corrected client
+  // Initialize state with fallback, ensuring app.icon_url is accessed safely
+  const [imgSrc, setImgSrc] = useState(app?.icon_url || '/icons/placeholder.png');
 
-  // This function tracks the click AND sets the referral cookie
+  // Handle image loading errors and update if app prop changes
+  useEffect(() => {
+    setImgSrc(app?.icon_url || '/icons/placeholder.png');
+  }, [app?.icon_url]);
+
+  // This function tracks the click AND saves the referrer cookie
   const handleReferralClick = async (isMyReferral: boolean) => {
+    // Ensure app object exists before proceeding
+    if (!app) {
+        console.error("App data is missing in AppCard.");
+        alert("Sorry, there was an error loading app details.");
+        return;
+    }
+
     const { data: { user } } = await supabase.auth.getUser();
 
-    const link = isMyReferral ? app.my_referral_link : app.link;
-    const utmLink = `${link}?utm_source=quickearn&utm_medium=app_card&utm_campaign=${app.name}`;
+    // Determine the link, providing fallbacks and ensuring it's not null/undefined
+    const link = isMyReferral
+        ? (app.my_referral_link || app.link || '#')
+        : (app.link || '#');
 
-    // --- START: ADDED COOKIE LOGIC ---
-    try {
-      // 1. Parse the link to find the '?ref=...' parameter
-      const url = new URL(link); // Ensure link is a full URL or handle potential errors
-      const urlParams = new URLSearchParams(url.search);
-      const referrerId = urlParams.get('ref'); // Extract the value of 'ref'
+    let referrerId = null;
 
-      // 2. If a referrer ID exists in the link, save it to a cookie
-      if (referrerId) {
-        // Set a cookie named 'referrer_id' with the extracted ID.
-        // It expires in 30 days. This implements "Last Click" attribution.
-        Cookies.set('referrer_id', referrerId, { expires: 30, path: '/' });
-        console.log(`Referrer cookie set: ${referrerId}`); // For debugging
-      } else {
-         // Optional: Clear the cookie if the link has no ref ID? Or leave the old one?
-         // Decide based on your desired attribution logic. For last-click, overwriting is fine.
-      }
-    } catch (e) {
-      console.error("Error processing referral link or setting cookie:", e);
-      // Handle cases where 'link' might not be a valid URL
+    // --- ADDED: Cookie Logic ---
+    if (link && link !== '#') { // Only try to parse valid links
+        try {
+            // Ensure URL is absolute for parsing, handle potential invalid links gracefully
+            // Correctly handle relative vs absolute links
+            const absoluteLink = link.startsWith('http') ? link : new URL(link, window.location.origin).toString();
+            const url = new URL(absoluteLink);
+            const urlParams = new URLSearchParams(url.search);
+            referrerId = urlParams.get('ref'); // Assumes your link uses '?ref=...'
+
+            if (referrerId && !user) { // Only set cookie if user is not logged in
+                console.log(`Setting referrer cookie: ${referrerId}`);
+                Cookies.set('referrer_id', referrerId, { expires: 30, path: '/' }); // 30-day cookie, site-wide
+            }
+        } catch (e) {
+            console.error("Error parsing link URL or setting cookie:", e, "Link:", link);
+            // Link might be invalid (#, javascript:, etc.) or URL constructor failed.
+            // Proceed without setting cookie but still log click if possible.
+        }
     }
-    // --- END: ADDED COOKIE LOGIC ---
+    // --- END: Cookie Logic ---
+
+    // Construct UTM link regardless of cookie success, only if link is valid
+    const utmLink = (link && link !== '#')
+        ? `${link}${link.includes('?') ? '&' : '?'}utm_source=quickearn&utm_medium=app_card&utm_campaign=${app.name || 'unknown_app'}`
+        : '#';
 
 
-    // Log to YOUR 'referral_clicks' table (Existing code)
+    // Log to YOUR 'referral_clicks' table
     const { error } = await supabase.from('referral_clicks').insert({
-      user_id: user?.id ?? null, // Correctly handles anonymous users
-      app: app.name,
+      user_id: user?.id ?? null,
+      app: app.name ?? 'Unknown App', // Add fallback for app name
       status: 'pending',
       timestamp: new Date().toISOString(),
-      // You might want to add the referrerId here too, if the column exists
-      // referred_by: referrerId ?? null
+      // Optionally store the detected referrerId in meta even for anon clicks
+      meta: referrerId ? { detected_referrer: referrerId } : null
     });
 
     if (error) {
-      console.error('Error logging click to Supabase:', error.message);
+      console.error('Error logging click:', error.message);
     }
 
-    // TODO: Log GA4 client event based on consent
-    // if (userHasConsented) { // You need a way to check consent status
-    //   window.gtag('event', 'referral_click', {
-    //     app_name: app.name,
-    //     is_my_referral: isMyReferral,
-    //     user_id: user?.id // Only if available and consented
-    //   });
+    // TODO: Log GA4 client event if consent given
+    // if (user?.user_metadata?.has_consented_tracking) {
+    //   window.gtag('event', 'referral_click', { app_name: app.name });
     // }
 
-    // Redirect user (Existing code)
-    window.open(utmLink, '_blank');
+    // Redirect user only if the link is valid and not just '#'
+    if (utmLink !== '#') {
+        window.open(utmLink, '_blank');
+    } else {
+        console.warn(`No valid redirect link found for app: ${app?.name || 'Unknown App'}`);
+        // Replace alert with a less disruptive notification if preferred
+        alert("Sorry, the link for this app is currently unavailable.");
+    }
   };
+
+  // Render fallback if app data is missing
+  if (!app) {
+      return (
+          <div className="card bg-base-100 shadow-xl border border-gray-200 p-6 text-center text-error">
+              App data unavailable.
+          </div>
+      );
+  }
 
   return (
     <motion.div
-      className="card bg-base-100 shadow-xl border border-gray-200"
+      className="card bg-base-100 shadow-xl border border-gray-200 flex flex-col" // Added flex flex-col
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
       whileHover={{ y: -5, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
     >
-      <figure className="px-6 pt-6">
+      <figure className="px-6 pt-6 h-24 flex items-center justify-center"> {/* Fixed height */}
         <Image
-          // Assuming icon_url exists in your 'Referstore' table or App type
-          src={app.icon_url || '/icons/placeholder.png'}
-          alt={`${app.name} logo`}
+          src={imgSrc} // State variable handles fallback
+          alt={`${app.name || 'App'} logo`}
           width={80}
           height={80}
-          className="rounded-xl object-contain"
-          // Add error handling for images
-          onError={(e) => {
-             // Handle broken image links, maybe show a default placeholder
-             (e.target as HTMLImageElement).src = '/icons/placeholder.png';
+          className="rounded-xl object-contain max-h-full" // Ensure image fits
+          onError={() => {
+            console.warn(`Image failed to load: ${app.icon_url}, falling back to placeholder.`);
+            setImgSrc('/icons/placeholder.png'); // Fallback on error
           }}
+          // Consider adding unoptimized prop if placeholder/external images cause issues
+          // unoptimized={imgSrc === '/icons/placeholder.png'}
         />
       </figure>
-      <div className="card-body items-center text-center">
-        <h2 className="card-title">{app.name}</h2>
-        <div className="space-x-2 my-2"> {/* Added margin */}
-          <div className="badge badge-primary badge-outline py-1 px-2"> {/* Added padding */}
-            You Get: ₹{app.referee_bonus || 0} {/* Added fallback */}
+      <div className="card-body items-center text-center flex-grow"> {/* Added flex-grow */}
+        <h2 className="card-title">{app.name || 'Referral App'}</h2>
+        <div className="space-x-2 my-1"> {/* Added margin */}
+          <div className="badge badge-primary badge-outline text-xs p-2"> {/* Smaller badge */}
+            You Get: ₹{app.referee_bonus || 0}
           </div>
-          <div className="badge badge-secondary badge-outline py-1 px-2"> {/* Added padding */}
-            Friend Gets: ₹{app.referrer_bonus || 0} {/* Added fallback */}
+          <div className="badge badge-secondary badge-outline text-xs p-2"> {/* Smaller badge */}
+            Friend Gets: ₹{app.referrer_bonus || 0}
           </div>
         </div>
-        <p className="text-gray-600 mt-2 min-h-[40px] text-sm"> {/* Made text smaller */}
-           {app.task || 'Complete simple task'} {/* Added fallback */}
+        <p className="text-gray-600 mt-2 min-h-[40px] text-sm flex-grow"> {/* Smaller text, flex-grow */}
+          {app.task || 'Complete simple task'}
         </p>
-        <div className="card-actions w-full mt-4 space-y-2">
+        <div className="card-actions w-full mt-auto space-y-2"> {/* mt-auto pushes buttons down */}
           <button
             className="btn btn-primary w-full"
-            onClick={() => handleReferralClick(false)} // Call function on click
+            onClick={() => handleReferralClick(false)}
+            // Disable button if no valid link exists
+            disabled={!app.link || app.link === '#'}
           >
             Download Now
           </button>
-          {/* Only show "Use My Referral" if a link exists */}
-          {app.my_referral_link && app.my_referral_link !== '#' && (
-             <button
-              className="btn btn-outline btn-sm w-full"
-              onClick={() => handleReferralClick(true)} // Call function on click
-            >
-              Use My Referral
-            </button>
-          )}
+          <button
+            className="btn btn-outline btn-sm w-full"
+            onClick={() => handleReferralClick(true)}
+            // Disable button if no valid referral link exists
+            disabled={!app.my_referral_link || app.my_referral_link === '#'}
+          >
+            Use My Referral
+          </button>
         </div>
       </div>
     </motion.div>
   );
 }
+

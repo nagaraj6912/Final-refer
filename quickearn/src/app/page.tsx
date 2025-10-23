@@ -1,158 +1,110 @@
-'use client';
-
+import AppCard from '@/components/AppCard';
+import FomoTimer from '@/components/FomoTimer';
 import { createSupabaseBrowserClient } from '@/lib/supabaseClient';
-import { User } from '@supabase/supabase-js';
-import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import fallbackApps from '@/lib/apps.json'; // Fallback data - we'll create this file later
+import type { App } from '@/types';
 
-// Define types for our data
-type Click = {
-  id: string;
-  app: string;
-  timestamp: string;
-  status: string;
-};
+// Lovable.app can edit these props
+interface HomePageProps {
+  headline: string;
+  tagline: string;
+  stats: { label: string; value: string }[];
+}
 
-type Reward = {
-  balance: number;
-};
-
-export default function DashboardPage() {
+// Fetch data server-side for fast initial load
+// Uses browser client suitable for SSR/Server Components in App Router
+async function getTopApps(): Promise<App[]> {
   const supabase = createSupabaseBrowserClient();
-  const [user, setUser] = useState<User | null>(null);
-  const [clicks, setClicks] = useState<Click[]>([]);
-  const [reward, setReward] = useState<Reward | null>({ balance: 0 });
-  const [upiId, setUpiId] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState('');
 
-  // Fetch all user data on page load
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        // Not logged in, redirect to homepage
-        window.location.href = '/';
-        return;
-      }
-      setUser(user);
-      setUpiId(user.user_metadata?.upi_id || '');
+  // Fetch from YOUR 'Referstore' table
+  const { data, error } = await supabase
+    .from('Referstore')
+    .select('*')
+    .limit(7); // Fetch only top 7 for homepage
 
-      // Fetch click history from your 'referral_clicks' table
-      const { data: clickData, error: clickError } = await supabase
-        .from('referral_clicks')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('timestamp', { ascending: false });
-
-      if (clickData) setClicks(clickData);
-      if (clickError) console.error('Error fetching clicks:', clickError);
-
-      // TODO: Fetch reward balance from your 'rewards' table
-      // const { data: rewardData, error: rewardError } = await supabase
-      //   .from('rewards')
-      //   .select('balance')
-      //   .eq('user_id', user.id)
-      //   .single();
-      // if (rewardData) setReward(rewardData);
-      
-      setLoading(false);
-    };
-    fetchData();
-  }, [supabase]);
-
-  const handleUpiUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setMessage('');
-
-    const response = await fetch('/api/update-upi', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ upiId }),
-    });
-
-    const result = await response.json();
-    if (response.ok) {
-      setMessage('Success! UPI ID updated.');
-    } else {
-      setMessage(`Error: ${result.error}`);
+  if (error || !data || data.length === 0) {
+    console.warn('Supabase fetch failed for Homepage, using fallback apps.json:', error?.message);
+    try {
+      // Ensure fallbackApps is treated as an array of App
+      const apps = fallbackApps as App[];
+      return apps.slice(0, 7);
+    } catch (fallbackError) {
+      console.error("Error loading fallback apps:", fallbackError);
+      return []; // Return empty array if fallback also fails
     }
-  };
-
-  if (loading) {
-    return <div className="text-center p-10">Loading Dashboard...</div>;
   }
+  // Ensure data matches the App type, especially numeric fields
+  return data.map(app => ({
+    ...app,
+    referrer_bonus: Number(app.referrer_bonus) || 0,
+    referee_bonus: Number(app.referee_bonus) || 0,
+  })) as App[];
+}
+
+export default async function HomePage(props: Partial<HomePageProps>) {
+  const {
+    headline = 'QuickEarn - Best Refer and Earn Apps India 2025 | Instant ₹100+ Payouts',
+    tagline = "India's fastest referral platform. No waiting, no hassle.",
+    stats = [
+      { label: 'Payouts Today', value: '₹50,000+' },
+      { label: 'Happy Users', value: '10,000+' },
+      { label: 'Top Apps', value: '30+' },
+    ],
+  } = props;
+
+  const topApps = await getTopApps();
 
   return (
-    <div className="container mx-auto max-w-4xl p-4">
-      <motion.h1 
-        className="text-3xl font-bold mb-6"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        Welcome, {user?.email}
-      </motion.h1>
+    <div className="container mx-auto p-4 max-w-6xl">
+      {/* 1. Hero Section */}
+      <section className="text-center py-12 md:py-20">
+        <h1 className="text-gray-900">{headline}</h1>
+        <p className="text-lg md:text-xl mt-4 max-w-2xl mx-auto">{tagline}</p>
+        <div className="flex justify-center gap-4 mt-8">
+          {/* Link this button to categories or quiz later */}
+          <button className="btn btn-primary btn-wide text-lg">
+            Start Earning
+          </button>
+        </div>
+      </section>
 
-      <div className="tabs tabs-boxed mb-6">
-        <a className="tab tab-active">Rewards</a>
-        <a className="tab">Click History</a>
-        <a className="tab">Profile</a>
+      {/* 2. Social Proof / Stats */}
+      <div className="stats stats-vertical md:stats-horizontal shadow-lg w-full mb-12 bg-base-100">
+        {stats.map((stat) => (
+          <div className="stat text-center" key={stat.label}>
+            <div className="stat-value text-primary">{stat.value}</div>
+            <div className="stat-desc text-lg">{stat.label}</div>
+          </div>
+        ))}
       </div>
 
-      {/* Tab 1: Rewards & Profile */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-      >
-        {/* Rewards Section */}
-        <div className="card bg-base-100 shadow-xl mb-6">
-          <div className="card-body">
-            <h2 className="card-title">Your Rewards</h2>
-            <p className="text-5xl font-bold text-primary">
-              ₹{reward?.balance || 0}
-            </p>
-            <p className="text-gray-500">Total balance pending</p>
-            <div className="card-actions justify-end mt-4">
-              <button 
-                className="btn btn-primary" 
-                disabled={(reward?.balance || 0) < 100}
-              >
-                Claim ₹{reward?.balance || 0} (Min ₹100)
-              </button>
-            </div>
+      {/* 3. FOMO Banner */}
+      <div className="card lg:card-side bg-secondary text-secondary-content shadow-xl mb-12">
+        <div className="card-body flex-col md:flex-row justify-between items-center">
+          <h2 className="card-title text-2xl md:text-3xl">
+            CRED ₹1,000 Bonus Offer! {/* Example Offer */}
+          </h2>
+          <div className="flex items-center gap-4">
+            <span className="text-lg">Ends in:</span>
+            <FomoTimer durationInHours={48} /> {/* Renders the timer */}
           </div>
         </div>
+      </div>
 
-        {/* Profile / UPI Section */}
-        <div className="card bg-base-100 shadow-xl">
-          <div className="card-body">
-            <h2 className="card-title">Profile Settings</h2>
-            <form onSubmit={handleUpiUpdate}>
-              <div className="form-control w-full">
-                <label className="label">
-                  <span className="label-text">Your UPI ID (for payouts)</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="yourname@upi"
-                  className="input input-bordered w-full"
-                  value={upiId}
-                  onChange={(e) => setUpiId(e.target.value)}
-                />
-              </div>
-              <button type="submit" className="btn btn-secondary mt-4">
-                Save UPI ID
-              </button>
-              {message && <p className="text-sm mt-2">{message}</p>}
-            </form>
+      {/* 4. Top App List */}
+      <section className="mb-12">
+        <h2 className="text-center mb-8">Top Instant Payout Apps</h2>
+        {topApps.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {topApps.map((app) => (
+              // Ensure app has a unique identifier, using 'id' if available, otherwise 'name'
+              <AppCard key={app.id || app.name} app={app} />
+            ))}
           </div>
-        </div>
-      </motion.div>
-
-      {/* TODO: Tab 2: Click History */}
-      {/* <div className="hidden"> ... click history table ... </div> */}
-
+        ) : (
+          <p className="text-center text-gray-500">Could not load apps. Please try again later.</p>
+        )}
+      </section>
     </div>
   );
 }

@@ -1,0 +1,113 @@
+[
+  {
+    "id": "phonepe-fallback",
+    "name": "PhonePe (Fallback)",
+    "category": "Payments",
+    "referrer_bonus": 20,
+    "referee_bonus": 100,
+    "task": "Sign up with KYC",
+    "link": "#",
+    "my_referral_link": "#",
+    "icon_url": "/icons/phonepe.png"
+  },
+  {
+    "id": "cred-fallback",
+    "name": "CRED (Fallback)",
+    "category": "Finance",
+    "referrer_bonus": 50,
+    "referee_bonus": 1000,
+    "task": "Pay bills & earn",
+    "link": "#",
+    "my_referral_link": "#",
+    "icon_url": "/icons/cred.png"
+  },
+  {
+    "id": "meesho-fallback",
+    "name": "Meesho (Fallback)",
+    "category": "Shopping",
+    "referrer_bonus": 30,
+    "referee_bonus": 50,
+    "task": "Install & purchase",
+    "link": "#",
+    "my_referral_link": "#",
+    "icon_url": "/icons/meesho.png"
+  },
+  {
+    "id": "groww-fallback",
+    "name": "Groww (Fallback)",
+    "category": "Finance",
+    "referrer_bonus": 100,
+    "referee_bonus": 100,
+    "task": "Complete KYC & invest",
+    "link": "#",
+    "my_referral_link": "#",
+    "icon_url": "/icons/groww.png"
+  },
+  {
+    "id": "upstox-fallback",
+    "name": "Upstox (Fallback)",
+    "category": "Finance",
+    "referrer_bonus": 200,
+    "referee_bonus": 100,
+    "task": "Open Demat account",
+    "link": "#",
+    "my_referral_link": "#",
+    "icon_url": "/icons/upstox.png"
+  },
+  {
+    "id": "mpl-fallback",
+    "name": "MPL (Fallback)",
+    "category": "Gaming",
+    "referrer_bonus": 75,
+    "referee_bonus": 50,
+    "task": "Play first game",
+    "link": "#",
+    "my_referral_link": "#",
+    "icon_url": "/icons/mpl.png"
+  },
+  {
+    "id": "dream11-fallback",
+    "name": "Dream11 (Fallback)",
+    "category": "Gaming",
+    "referrer_bonus": 100,
+    "referee_bonus": 100,
+    "task": "Join a contest",
+    "link": "#",
+    "my_referral_link": "#",
+    "icon_url": "/icons/dream11.png"
+  },
+  {
+    "id": "myntra-fallback",
+    "name": "Myntra (Fallback)",
+    "category": "Shopping",
+    "referrer_bonus": 100,
+    "referee_bonus": 100,
+    "task": "First purchase",
+    "link": "#",
+    "my_referral_link": "#",
+    "icon_url": "/icons/myntra.png"
+  },
+  {
+    "id": "ajio-fallback",
+    "name": "AJIO (Fallback)",
+    "category": "Shopping",
+    "referrer_bonus": 50,
+    "referee_bonus": 50,
+    "task": "First purchase",
+    "link": "#",
+    "my_referral_link": "#",
+    "icon_url": "/icons/ajio.png"
+  },
+  {
+    "id": "gpay-fallback",
+    "name": "Google Pay (Fallback)",
+    "category": "Payments",
+    "referrer_bonus": 51,
+    "referee_bonus": 21,
+    "task": "First transaction",
+    "link": "#",
+    "my_referral_link": "#",
+    "icon_url": "/icons/gpay.png"
+  }
+]
+
