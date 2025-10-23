@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "baseUrl": ".", // <-- ADD THIS LINE
+    "baseUrl": ".", // <-- ADDED: Sets the base directory for path resolution
     "target": "ES2017",
     "lib": [
       "dom",
@@ -24,16 +24,19 @@
       }
     ],
     "paths": {
-      "@/*": [
-        "./src/*" // This path is correct
-      ]
+      "@/*": ["./src/*"] // <-- CORRECTED: Points '@/' to the 'src' folder
     }
   },
   "include": [
-    // ... your include paths ...
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts", // Keep existing .next paths
+    "**/*.mts",
     ".next\\dev/types/**/*.ts",
     ".next\\dev/types/**/*.ts"
-  ],
+, "tailwind.config.mjs"  ],
   "exclude": [
     "node_modules"
   ]

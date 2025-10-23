@@ -1,9 +1,7 @@
+import "tailwindcss/preflight.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Your custom base styles or component layers */
-body {
-  @apply text-base text-gray-700 bg-base-100;
-}
-
+/* All @apply rules temporarily removed for testing */

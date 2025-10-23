@@ -1,6 +1,7 @@
-import type { Config } from "tailwindcss";
+// No import needed at the top
 
-const  Config = {
+// Use lowercase 'config' and remove any type annotation like ': Config'
+const config = {
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -10,6 +11,7 @@ const  Config = {
     extend: {},
   },
   plugins: [require("daisyui")],
+  // The 'daisyui' key itself is correct
   daisyui: {
     themes: [
       {
@@ -31,4 +33,7 @@ const  Config = {
     ],
   },
 };
-export default Config;
+
+// Export the lowercase 'config' variable
+export default config;
+
